@@ -1,0 +1,33 @@
+INSERT INTO food (
+    businessname,
+    issdttm,
+    expdttm,
+    licstatus,
+    result,
+    resultdttm,
+    violdesc,
+    violdttm,
+    violstatus,
+    comments,
+    address,
+    city,
+    state,
+    zip,
+    location
+) VALUES (
+    :businessname,
+    :issdttm,
+    :expdttm,
+    :licstatus,
+    :result,
+    :resultdttm,
+    :violdesc,
+    :violdttm,
+    :violstatus,
+    :comments,
+    :address,
+    :city,
+    :state,
+    :zip,
+    :location
+);
