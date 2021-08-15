@@ -4,10 +4,10 @@ import (
 	"compress/bzip2"
 	_ "embed"
 	"encoding/csv"
+	"fmt"
 	"io"
 	"log"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -45,41 +45,34 @@ func unmarshalTime(data []byte, t *time.Time) error {
 	return err
 }
 
-func etl(csvFile io.Reader, db *sqlx.DB) error {
+func ETL(csvFile io.Reader, tx *sqlx.Tx) (int, int, error) {
 	r := csv.NewReader(csvFile)
 	dec, err := csvutil.NewDecoder(r)
 	if err != nil {
-		return err
+		return 0, 0, err
 	}
 	dec.Register(unmarshalTime)
+	numRecords := 0
+	numErrors := 0
 
-	if _, err := db.Exec(schemaSQL); err != nil {
-		return err
-	}
-
-	tx, err := db.Beginx()
-	if err != nil {
-		return err
-	}
-
-	lnum := 1
 	for {
-		lnum++
+		numRecords++
 		var row Row
 		err = dec.Decode(&row)
 		if err == io.EOF {
 			break
 		}
 		if err != nil {
-			log.Printf("error: %d: %s %s", lnum, strings.Join(dec.Record(), ","), err)
+			log.Printf("error: %d: %s", numRecords, err)
+			numErrors++
 			continue
 		}
 		if _, err := tx.NamedExec(insertSQL, &row); err != nil {
-			tx.Rollback()
-			return err
+			return 0, 0, err
 		}
 	}
-	return tx.Commit()
+
+	return numRecords, numErrors, nil
 }
 
 func redirectLog(logFile string) error {
@@ -110,7 +103,28 @@ func main() {
 	}
 	defer db.Close()
 
-	if err := etl(r, db); err != nil {
+	if _, err := db.Exec(schemaSQL); err != nil {
 		log.Fatal(err)
 	}
+
+	tx, err := db.Beginx()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	start := time.Now()
+	numRecords, numErrors, err := ETL(r, tx)
+	duration := time.Since(start)
+	if err != nil {
+		tx.Rollback()
+		log.Fatal(err)
+	}
+
+	frac := float64(numErrors) / float64(numRecords)
+	if frac > 0.1 {
+		tx.Rollback()
+		log.Fatalf("too many errors: %d/%d = %f", numErrors, numRecords, frac)
+	}
+	tx.Commit()
+	fmt.Printf("%d records (%.2f errors) in %v\n", numRecords, frac, duration)
 }
