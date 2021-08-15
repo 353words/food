@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -44,29 +45,23 @@ func unmarshalTime(data []byte, t *time.Time) error {
 	return err
 }
 
-func main() {
-	file, err := os.Open("boston-food.csv.bz2")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer file.Close()
-
-	r := csv.NewReader(bzip2.NewReader(file))
+func etl(csvFile io.Reader, db *sqlx.DB) error {
+	r := csv.NewReader(csvFile)
 	dec, err := csvutil.NewDecoder(r)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	dec.Register(unmarshalTime)
 
-	db, err := sqlx.Open("sqlite3", "./food.db")
-	if err != nil {
-		log.Fatal(err)
+	if _, err := db.Exec(schemaSQL); err != nil {
+		return err
 	}
-	defer db.Close()
 
-	db.MustExec(schemaSQL)
+	tx, err := db.Beginx()
+	if err != nil {
+		return err
+	}
 
-	tx := db.MustBegin()
 	lnum := 1
 	for {
 		lnum++
@@ -76,10 +71,46 @@ func main() {
 			break
 		}
 		if err != nil {
-			log.Printf("error: %d: %s", lnum, err)
+			log.Printf("error: %d: %s %s", lnum, strings.Join(dec.Record(), ","), err)
 			continue
 		}
-		tx.NamedExec(insertSQL, &row)
+		if _, err := tx.NamedExec(insertSQL, &row); err != nil {
+			tx.Rollback()
+			return err
+		}
 	}
-	tx.Commit()
+	return tx.Commit()
+}
+
+func redirectLog(logFile string) error {
+	file, err := os.OpenFile(logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return err
+	}
+	log.SetOutput(file)
+	return nil
+}
+
+func main() {
+	if err := redirectLog("etl.log"); err != nil {
+		log.Fatal(err)
+	}
+
+	file, err := os.Open("boston-food.csv.bz2")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer file.Close()
+
+	r := bzip2.NewReader(file)
+
+	db, err := sqlx.Open("sqlite3", "./food.db")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
+
+	if err := etl(r, db); err != nil {
+		log.Fatal(err)
+	}
 }
