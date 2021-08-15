@@ -75,20 +75,7 @@ func ETL(csvFile io.Reader, tx *sqlx.Tx) (int, int, error) {
 	return numRecords, numErrors, nil
 }
 
-func redirectLog(logFile string) error {
-	file, err := os.OpenFile(logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		return err
-	}
-	log.SetOutput(file)
-	return nil
-}
-
 func main() {
-	if err := redirectLog("etl.log"); err != nil {
-		log.Fatal(err)
-	}
-
 	file, err := os.Open("boston-food.csv.bz2")
 	if err != nil {
 		log.Fatal(err)
