@@ -1,4 +1,4 @@
-CREATE TABLE food (
+CREATE TABLE IF NOT EXISTS food (
     businessname TEXT,
     issdttm TIMESTAMP,
     expdttm TIMESTAMP,
