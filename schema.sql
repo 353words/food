@@ -1,17 +1,13 @@
-CREATE TABLE IF NOT EXISTS food (
-    businessname TEXT,
-    issdttm TIMESTAMP,
-    expdttm TIMESTAMP,
-    licstatus TEXT,
+CREATE TABLE IF NOT EXISTS violations (
+    business_name TEXT,
+    license_status TEXT,
     result TEXT,
-    resultdttm TIMESTAMP,
-    violdesc TEXT,
-    violdttm TIMESTAMP,
-    violstatus TEXT,
+    description TEXT,
+    time TIMESTAMP,
+    status TEXT,
+    level INTEGER,
     comments TEXT,
     address TEXT,
     city TEXT,
-    state TEXT,
-    zip TEXT,
-    location TEXT
+    zip TEXT
 );

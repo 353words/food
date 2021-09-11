@@ -1,7 +1,6 @@
 package main
 
 import (
-	"compress/bzip2"
 	_ "embed"
 	"encoding/csv"
 	"fmt"
@@ -22,27 +21,37 @@ var schemaSQL string
 var insertSQL string
 
 type Row struct {
-	Businessname string    `csv:"businessname" db:"businessname"`
-	Issdttm      time.Time `csv:"issdttm" db:"issdttm"`
-	Expdttm      time.Time `csv:"expdttm" db:"expdttm"`
-	Licstatus    string    `csv:"licstatus" db:"licstatus"`
-	Result       string    `csv:"result" db:"result"`
-	Resultdttm   time.Time `csv:"resultdttm" db:"resultdttm"`
-	Violdesc     string    `csv:"violdesc" db:"violdesc"`
-	Violdttm     time.Time `csv:"violdttm" db:"violdttm"`
-	Violstatus   string    `csv:"violstatus" db:"violstatus"`
-	Comments     string    `csv:"comments" db:"comments"`
-	Address      string    `csv:"address" db:"address"`
-	City         string    `csv:"city" db:"city"`
-	State        string    `csv:"state" db:"state"`
-	Zip          string    `csv:"zip" db:"zip"`
-	Location     string    `csv:"location" db:"location"`
+	Business   string    `csv:"businessname" db:"business_name"`
+	Licstatus  string    `csv:"licstatus" db:"license_status"`
+	Result     string    `csv:"result" db:"result"`
+	Violdesc   string    `csv:"violdesc" db:"description"`
+	Violdttm   time.Time `csv:"violdttm" db:"time"`
+	Violstatus string    `csv:"violstatus" db:"status"`
+	Viollevel  string    `csv:"viollevel" db:"-"`
+	Level      int       `db:"level"`
+	Comments   string    `csv:"comments" db:"comments"`
+	Address    string    `csv:"address" db:"address"`
+	City       string    `csv:"city" db:"city"`
+	Zip        string    `csv:"zip" db:"zip"`
 }
 
 func unmarshalTime(data []byte, t *time.Time) error {
 	var err error
 	*t, err = time.Parse("2006-01-02 15:04:05", string(data))
 	return err
+}
+
+func parseLevel(value string) int {
+	switch value {
+	case "*":
+		return 1
+	case "**":
+		return 2
+	case "***":
+		return 3
+	}
+
+	return -1
 }
 
 func ETL(csvFile io.Reader, tx *sqlx.Tx) (int, int, error) {
@@ -67,6 +76,7 @@ func ETL(csvFile io.Reader, tx *sqlx.Tx) (int, int, error) {
 			numErrors++
 			continue
 		}
+		row.Level = parseLevel(row.Viollevel)
 		if _, err := tx.NamedExec(insertSQL, &row); err != nil {
 			return 0, 0, err
 		}
@@ -76,13 +86,11 @@ func ETL(csvFile io.Reader, tx *sqlx.Tx) (int, int, error) {
 }
 
 func main() {
-	file, err := os.Open("boston-food.csv.bz2")
+	file, err := os.Open("boston-food.csv")
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer file.Close()
-
-	r := bzip2.NewReader(file)
 
 	db, err := sqlx.Open("sqlite3", "./food.db")
 	if err != nil {
@@ -100,7 +108,7 @@ func main() {
 	}
 
 	start := time.Now()
-	numRecords, numErrors, err := ETL(r, tx)
+	numRecords, numErrors, err := ETL(file, tx)
 	duration := time.Since(start)
 	if err != nil {
 		tx.Rollback()

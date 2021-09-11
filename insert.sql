@@ -1,33 +1,25 @@
-INSERT INTO food (
-    businessname,
-    issdttm,
-    expdttm,
-    licstatus,
+INSERT INTO violations (
+    business_name,
+    license_status,
     result,
-    resultdttm,
-    violdesc,
-    violdttm,
-    violstatus,
+    description,
+    time,
+    status,
+    level,
     comments,
     address,
     city,
-    state,
-    zip,
-    location
+    zip
 ) VALUES (
-    :businessname,
-    :issdttm,
-    :expdttm,
-    :licstatus,
+    :business_name,
+    :license_status,
     :result,
-    :resultdttm,
-    :violdesc,
-    :violdttm,
-    :violstatus,
+    :description,
+    :time,
+    :status,
+    :level,
     :comments,
     :address,
     :city,
-    :state,
-    :zip,
-    :location
+    :zip
 );

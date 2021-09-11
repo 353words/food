@@ -1,3 +1,4 @@
-boston-food.csv.bz2
+*.bz2
+*.csv
+*.db
 etl.log
-food.db
