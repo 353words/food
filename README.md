@@ -1,6 +1,14 @@
 # Where *Not* to Eat? - ETL in Go
++++
+title = "Where *Not* to Eat? - ETL in Go"
+date = "FIXME"
+tags = ["golang"]
+categories = [ "golang" ]
+url = "FIXME"
+author = "mikit"
++++
 
-You about to visit Boston, and would like to taste some good food. You ask your friend who lives there what are good places to eat. They reply with "Everything is good, you can't go wrong". Which makes you think, maybe I should check where *not* to eat.
+You are about to visit Boston, and would like to taste some good food. You ask your friend who lives there what are good places to eat. They reply with "Everything is good, you can't go wrong". Which makes you think, maybe I should check where *not* to eat.
 
 The data geek in you arises, and you find out that the city of Boson has a [dataset of food violations](https://data.boston.gov/dataset/food-establishment-inspections). You download it and decide to have a look.
 
@@ -12,9 +20,9 @@ The data is in CSV format (which you hate). Since you're going to play around wi
 
 The three stages of ETL are:
 
-- Extract: Data in logs, CSVs and other formats need to be parsed (or extracted). Sometime we want only parts of the data.
+- Extract: Data in logs, CSVs and other formats need to be parsed (or extracted). Sometimes we want only parts of the data.
 - Transform: Here we rename field, convert data types, enrich (e.g. [geolocation](https://en.wikipedia.org/wiki/Internet_geolocation)), and more
-- Load: Finally, we load the data to it's destination.
+- Load: Finally, we load the data to its destination.
 
 _Note: Sometimes the order is changed, and we do [ELT](https://en.wikipedia.org/wiki/Extract,_load,_transform). First we extract and load, and then transformations are done in the database._
 
@@ -37,7 +45,7 @@ Some names, such as `businessname`, make sense. Some, such as `expdttm` are more
 
 _Note: In your company, make sure *every* column/field is documented. I'm getting paid to poke in companies data, and the amount of times they can't explain a field to me is way too big._
 
-After reading the data description, you decide to use only some of the fields and rename them have better sense.
+After reading the data description, you decide to use only some of the fields and rename some of them.
 
 - `businessname` will become `business_name`
 - `licstatus` will become `license_status`
@@ -118,8 +126,7 @@ Listing 4 shows our imports. On line 04 we `_` import the [embed](https://pkg.go
 21 var insertSQL string
 ```
 
-On lines 17-21 we use a `//go:embed` directive to embed the SQL written in .sql files into our code. This let's use write SQL outside the Go code and still ship a single executable.
-
+On lines 17-21 we use a `//go:embed` directive to embed the SQL written in .sql files into our code. This lets us write SQL outside the Go code and still ship a single executable.
 
 **Listing 6: Row**
 
@@ -212,7 +219,7 @@ _Note: I never remember how to specify time format. My go-to place is the [Const
 86 }
 ```
 
-Listing 8 shows the `ETL` function. On line 57 we see `ETL` receives an `io.Reader` as the CSV and a [transaction](https://en.wikipedia.org/wiki/Database_transaction) which is used to insert values to the database.
+Listing 8 shows the `ETL` function. On line 57 we see `ETL` receives an `io.Reader` as the CSV and a [transaction](https://en.wikipedia.org/wiki/Database_transaction) which is used to insert values to the database, `ETL` returns number of records, num of bad records and an error value.
 On line 63 we register `unmarshalTime` to handle time values. On lines 64,45 we initial number of records and number of errors which are returned by `ETL`. On line 67 we start a `for` loop. On line 70 we decode a row from the CSV and on line 71 we check if the returned error is `io.EOF` signaling end-of--file. On line 74 we check for other errors and if there is log them and increase `numErrors` on line 76. Then on 79 we convert to numerical level and on line 80 we insert the record to the database, again checking for errors. Finally, on line 85 we return number of records, number of errors and signal that there was no critical error.
 
 **Listing 10: main**
@@ -262,7 +269,7 @@ Listing 10 shows the `main` function. On lines 89-93 we open the CSV file. On li
 
 ### Interlude: Transactions
 
-Inserting data via a transaction means that either all of the data is inserted or non of it. If we didn't use transactions, and half of the data went it - we had a serious issue. We need either to restart the ETL from the middle or delete the data that did manage to get it. Both options are hard to get right and will make your code complicated. Transactions are one of the main reasons (apart from SQL) that I love using transactional databases such as SQLLite, PostgreSQL and others.
+Inserting data via a transaction means that either all of the data is inserted or none of it. If we didn't use transactions, and half of the data went in - we had a serious issue. We need either to restart the ETL from the middle or delete the data that did manage to get it. Both options are hard to get right and will make your code complicated. Transactions are one of the main reasons (apart from SQL) that I love using transactional databases such as SQLLite, PostgreSQL and others.
 
 ## Running the ETL
 
@@ -296,9 +303,9 @@ Once the data is in the database, we can use SQL to query it.
 10 LIMIT 20
 ```
 
-Listing 12 shows the SQL query to select the top 20 business which has most violations in the last 5 years. On line 02 we select the business_name column and the count of it. On lines 05-07 we limit the records to ones that are active and the time is after 2016. On line 08 we group the row by the business_name, on line 09 we order the results by the number of violations and finally on line 10 we limit to 20 results.
+Listing 12 shows the SQL query to select the top 20 businesses which have had the most violations in the last 5 years. On line 02 we select the business_name column and the count of it. On lines 05-07 we limit the records to ones that are active and the time is after 2016. On line 08 we group the row by the business_name, on line 09 we order the results by the number of violations and finally on line 10 we limit to 20 results.
 
-**Listing 13: Running**
+**Listing 13: Running the Query**
 
 ```
 $ sqlite3 food.db < query.sql 
@@ -328,8 +335,10 @@ Listing 13 shows how to run the query using the `sqlite3` command line utility.
 
 ## Final Thoughts
 
-Data science is dominated by, well - data :) Data pipelines and ETLs are what brings the data to a place where you can query and analyze it. Go is a great fit for running ETL, it's fast, efficient and have great libraries.
+Data science is dominated by, well - data :) Data pipelines and ETLs are what brings the data to a place where you can query and analyze it. Go is a great fit for running ETL, it's fast, efficient and has great libraries.
 
 Using transactions and SQL will save you a lot of effort in the long run. You don't need to be an SQL expert (I'm not) in order to use them, and there's a lot of knowledge out there on SQL - it's been around since the 70's.
 
 As for where not to eat - I'll leave that to your discretion :)
+
+
